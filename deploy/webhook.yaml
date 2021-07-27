@@ -19,3 +19,5 @@ webhooks:
         apiGroups: ["*"]
         apiVersions: ["*"]
         resources: ["*/*"]
+    sideEffects: None
+    admissionReviewVersions: ["v1", "v1beta1"]
