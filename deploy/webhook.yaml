@@ -8,7 +8,7 @@ metadata:
   annotations:
     cert-manager.io/inject-ca-from: resource-annotator/resource-annotator-certificate
 webhooks:
-  - name: resource-annotator.ukfr.cloud
+  - name: resource-annotator.fehe.eu
     clientConfig:
       service:
         name: resource-annotator

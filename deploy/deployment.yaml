@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: resource-annotator
+  namespace: resource-annotator
   labels:
     app: resource-annotator
 spec:
