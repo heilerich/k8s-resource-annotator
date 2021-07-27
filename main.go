@@ -6,7 +6,9 @@ import (
   "fmt"
   "net/http"
   "os"
-  "strings"
+  "io/ioutil"
+
+  "gopkg.in/yaml.v3"
 
   metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -18,58 +20,81 @@ import (
   kwhmutating "github.com/slok/kubewebhook/v2/pkg/webhook/mutating"
 )
 
+type config struct {
+  Rules map[string]map[string]string
+}
+
 type annotationMutator struct {
   logger kwhlog.Logger
+  config config
 }
 
 func (mutator *annotationMutator) Mutate(_ context.Context, _ *kwhmodel.AdmissionReview, obj metav1.Object) (*kwhmutating.MutatorResult, error) {
-  labels := obj.GetLabels()
-  mutated := false
+  rules := mutator.config.Rules
 
   lg := mutator.logger.WithValues(kwhlog.Kv{
     "namespace": obj.GetNamespace(),
     "name": obj.GetName(),
   })
 
-  annotations := obj.GetAnnotations()
+  labels := obj.GetLabels()
 
-  for k, v := range labels {
-    if !strings.HasPrefix(k, "annotate-") {
-      lg.Debugf("Label %s does not match.", k)
-      continue
-    }
-    newKey := strings.TrimPrefix(k, "annotate-")
-    lg.Debugf("Adding annotation: '%s'='%s'", newKey, v)
-    annotations[newKey] = v
-
-    mutated = true
-  }
-
-  if !mutated {
-    lg.Infof("Not changing any annotations.")
+  ruleName, ok := labels["resource-annotator.fehe.eu/rule"]
+  if !ok {
+    lg.Infof("No rule label. Skip.")
     return &kwhmutating.MutatorResult{}, nil
   }
 
+  newAnnotations, ok := rules[ruleName]
+  if !ok {
+    lg.Warningf("No rule matching: %s. Skip.", ruleName)
+    return &kwhmutating.MutatorResult{}, nil
+  }
+
+  annotations := obj.GetAnnotations()
+  for k, v := range newAnnotations {
+    lg.Debugf("Setting annotation %s=%s", k, v)
+    annotations[k] = v
+  }
+
   obj.SetAnnotations(annotations)
+
   return &kwhmutating.MutatorResult{
     MutatedObject: obj,
   }, nil
 }
 
-type config struct {
-  certFile string
-  keyFile  string
+type flags struct {
+  certFile   string
+  keyFile    string
+  configFile string
 }
 
-func initFlags() *config {
-  cfg := &config{}
+func initFlags() *flags {
+  cfg := &flags{}
 
   fl := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
   fl.StringVar(&cfg.certFile, "tls-cert-file", "", "TLS certificate file")
   fl.StringVar(&cfg.keyFile, "tls-key-file", "", "TLS key file")
+  fl.StringVar(&cfg.configFile, "config", "", "YAML file containing configuration")
 
   fl.Parse(os.Args[1:])
   return cfg
+}
+
+func loadConfig(flg *flags) (*config, error) {
+  buf, err := ioutil.ReadFile(flg.configFile)
+  if err != nil {
+    return nil, err
+  }
+
+  cfg := &config{}
+  err = yaml.Unmarshal(buf, cfg)
+  if err != nil {
+    return nil, fmt.Errorf("in file %q: %v", flg.configFile, err)
+  }
+
+  return cfg, nil
 }
 
 func main() {
@@ -77,9 +102,17 @@ func main() {
   logrusLogEntry.Logger.SetLevel(logrus.DebugLevel)
   logger := kwhlogrus.NewLogrus(logrusLogEntry)
 
-  cfg := initFlags()
+  flg := initFlags()
 
-  mt := &annotationMutator{logger: logger}
+  cfg, err := loadConfig(flg)
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "error loading configuration: %s", err)
+    os.Exit(1)
+  }
+
+  logger.Infof("%d rule(s) loaded.", len(cfg.Rules))
+
+  mt := &annotationMutator{logger: logger, config: *cfg}
 
   mcfg := kwhmutating.WebhookConfig{
     ID:      "annotateFromLabel",
@@ -99,7 +132,7 @@ func main() {
     os.Exit(1)
   }
   logger.Infof("Listening on :8080")
-  err = http.ListenAndServeTLS(":8080", cfg.certFile, cfg.keyFile, whHandler)
+  err = http.ListenAndServeTLS(":8080", flg.certFile, flg.keyFile, whHandler)
   if err != nil {
     fmt.Fprintf(os.Stderr, "error serving webhook: %s", err)
     os.Exit(1)

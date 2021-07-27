@@ -22,14 +22,21 @@ spec:
           args:
             - -tls-cert-file=/etc/webhook/certs/tls.crt
             - -tls-key-file=/etc/webhook/certs/tls.key
+            - -config=/etc/webhook/config.yaml
           volumeMounts:
             - name: webhook-certs
               mountPath: /etc/webhook/certs
+              readOnly: true
+            - name: config
+              mountPath: /etc/webhook
               readOnly: true
       volumes:
         - name: webhook-certs
           secret:
             secretName: resource-annotator-certs
+        - name: config
+          configMap:
+            name: resource-annotator-cm
 ---
 apiVersion: v1
 kind: Service
