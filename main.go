@@ -78,7 +78,7 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
           break
         }
         if val != v {
-          lg.Debugf("Rule does not match label %s: %s!=%s ", v, val)
+          lg.Debugf("Rule does not match label %s: %s!=%s ", k, v, val)
           labelsMatched = false
           break
         }
