@@ -4,3 +4,4 @@ resources:
 - certs.yaml
 - deployment.yaml
 - webhook.yaml
+- namespace.yaml
