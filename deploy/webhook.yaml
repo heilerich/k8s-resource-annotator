@@ -1,0 +1,21 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: resource-annotator
+  labels:
+    app: resource-annotator
+    kind: mutator
+  annotations:
+    cert-manager.io/inject-ca-from: resource-annotator/resource-annotator-certificate
+webhooks:
+  - name: resource-annotator.ukfr.cloud
+    clientConfig:
+      service:
+        name: resource-annotator
+        namespace: resource-annotator
+        path: "/mutate"
+    rules:
+      - operations: [ "CREATE" ]
+        apiGroups: ["*"]
+        apiVersions: ["*"]
+        resources: ["*/*"]

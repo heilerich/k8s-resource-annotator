@@ -1,0 +1,20 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: resource-annotator-ca
+  namespace: kubermatic
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: resource-annotator-certificate
+  namespace: kubermatic
+spec:
+  secretName: resource-annotator-certs
+  dnsNames:
+  - resource-annotator.resource-annotator.svc
+  issuerRef:
+    name: resource-annotator-ca

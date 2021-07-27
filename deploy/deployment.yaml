@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-annotator
+  labels:
+    app: resource-annotator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resource-annotator
+  template:
+    metadata:
+      labels:
+        app: resource-annotator
+    spec:
+      containers:
+        - name: resource-annotator
+          image: ghcr.io/heilerich/k8s-resource-annotator:latest
+          imagePullPolicy: Always
+          args:
+            - -tls-cert-file=/etc/webhook/certs/tls.crt
+            - -tls-key-file=/etc/webhook/certs/tls.key
+          volumeMounts:
+            - name: webhook-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+        - name: webhook-certs
+          secret:
+            secretName: resource-annotator-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resource-annotator
+  labels:
+    app: resource-annotator
+spec:
+  ports:
+  - port: 443
+    targetPort: 8080
+  selector:
+    app: resource-annotator
