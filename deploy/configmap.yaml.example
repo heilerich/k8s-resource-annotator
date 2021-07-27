@@ -5,7 +5,11 @@ metadata:
   namespace: resource-annotator
 data:
   config.yaml: |
-    # Annotates all resources with resource-annotator.fehe.eu/rule='label-one' 
-    label-one:
-      annotation-A: one
-      annotation-B: one
+    # Annotates all secrets in namespace test-ns with label app=test-app with matched-rule=amazing
+    rules:
+    - matchNamespace: test-ns
+      matchKind: Secret
+      matchLabels:
+        app: test-app
+      annotations:
+        matched-rule: amazing-rule

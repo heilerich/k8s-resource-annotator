@@ -20,8 +20,15 @@ import (
   kwhmutating "github.com/slok/kubewebhook/v2/pkg/webhook/mutating"
 )
 
+type rule struct {
+  MatchNamespace string            `yaml:"matchNamespace"`
+  MatchKind      string            `yaml:"matchKind"`
+  MatchLabels    map[string]string `yaml:"matchLabels"`
+  Annotations    map[string]string
+}
+
 type config struct {
-  Rules map[string]map[string]string
+  Rules []rule
 }
 
 type annotationMutator struct {
@@ -29,32 +36,69 @@ type annotationMutator struct {
   config config
 }
 
-func (mutator *annotationMutator) Mutate(_ context.Context, _ *kwhmodel.AdmissionReview, obj metav1.Object) (*kwhmutating.MutatorResult, error) {
+func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.AdmissionReview, obj metav1.Object) (*kwhmutating.MutatorResult, error) {
+  matched := false
   rules := mutator.config.Rules
 
+  namespace := obj.GetNamespace()
+  kind := ar.RequestGVK.Kind
+
   lg := mutator.logger.WithValues(kwhlog.Kv{
-    "namespace": obj.GetNamespace(),
+    "namespace": namespace,
+    "kind": kind,
     "name": obj.GetName(),
   })
 
   labels := obj.GetLabels()
-
-  ruleName, ok := labels["resource-annotator.fehe.eu/rule"]
-  if !ok {
-    lg.Infof("No rule label. Skip.")
-    return &kwhmutating.MutatorResult{}, nil
-  }
-
-  newAnnotations, ok := rules[ruleName]
-  if !ok {
-    lg.Warningf("No rule matching: %s. Skip.", ruleName)
-    return &kwhmutating.MutatorResult{}, nil
-  }
-
   annotations := obj.GetAnnotations()
-  for k, v := range newAnnotations {
-    lg.Debugf("Setting annotation %s=%s", k, v)
-    annotations[k] = v
+
+  for _, rule := range rules {
+    if rule.MatchNamespace != "" && namespace != rule.MatchNamespace {
+      lg.Debugf("Rule does not match namespace: %s!=%s", rule.MatchNamespace, namespace)
+      continue
+    }
+
+    if rule.MatchKind != "" && kind != rule.MatchKind {
+      lg.Debugf("Rule does not match kind: %s!=%s", rule.MatchNamespace, namespace)
+      continue
+    }
+
+    if rule.MatchKind != "" && kind != rule.MatchKind {
+      lg.Debugf("Rule does not match kind: %s!=%s", rule.MatchNamespace, namespace)
+      continue
+    }
+
+    if len(rule.MatchLabels) > 0 {
+      labelsMatched := false
+      for k, v := range rule.MatchLabels {
+        val, ok := labels[k]
+        if !ok {
+          lg.Debugf("Rule does not match: missing label %s", k)
+          labelsMatched = false
+          break
+        }
+        if val != v {
+          lg.Debugf("Rule does not match label %s: %s!=%s ", v, val)
+          labelsMatched = false
+          break
+        }
+      }
+      if !labelsMatched {
+        continue
+      }
+
+      lg.Debugf("Rule matched")
+      matched = true
+      for k, v := range rule.Annotations {
+        lg.Debugf("Setting annotation %s=%s", k, v)
+        annotations[k] = v
+      }
+    }
+  }
+
+  if !matched {
+    lg.Warningf("No rule matched. Skip.")
+    return &kwhmutating.MutatorResult{}, nil
   }
 
   obj.SetAnnotations(annotations)
