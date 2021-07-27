@@ -11,5 +11,7 @@ data:
       matchKind: Secret
       matchLabels:
         app: test-app
+      # You can also match on names
+      # matchName: objectName
       annotations:
         matched-rule: amazing-rule

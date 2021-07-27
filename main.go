@@ -23,6 +23,7 @@ import (
 type rule struct {
   MatchNamespace string            `yaml:"matchNamespace"`
   MatchKind      string            `yaml:"matchKind"`
+  MatchName      string            `yaml:"matchName"`
   MatchLabels    map[string]string `yaml:"matchLabels"`
   Annotations    map[string]string
 }
@@ -42,11 +43,12 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
 
   namespace := obj.GetNamespace()
   kind := ar.RequestGVK.Kind
+  name := obj.GetName()
 
   lg := mutator.logger.WithValues(kwhlog.Kv{
     "namespace": namespace,
     "kind": kind,
-    "name": obj.GetName(),
+    "name": name,
   })
 
   labels := obj.GetLabels()
@@ -59,12 +61,12 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
     }
 
     if rule.MatchKind != "" && kind != rule.MatchKind {
-      lg.Debugf("Rule does not match kind: %s!=%s", rule.MatchNamespace, namespace)
+      lg.Debugf("Rule does not match kind: %s!=%s", rule.MatchKind, kind)
       continue
     }
 
-    if rule.MatchKind != "" && kind != rule.MatchKind {
-      lg.Debugf("Rule does not match kind: %s!=%s", rule.MatchNamespace, namespace)
+    if rule.MatchName != "" && name != rule.MatchName {
+      lg.Debugf("Rule does not match name: %s!=%s", rule.MatchName, name)
       continue
     }
 
