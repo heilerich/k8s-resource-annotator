@@ -92,6 +92,9 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
 
     lg.Debugf("Rule[%d] matched", index)
     matched = true
+    if annotations == nil {
+      annotations = make(map[string]string)
+    }
     for k, v := range rule.Annotations {
       lg.Debugf("Setting annotation %s=%s", k, v)
       annotations[k] = v
