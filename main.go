@@ -54,19 +54,19 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
   labels := obj.GetLabels()
   annotations := obj.GetAnnotations()
 
-  for _, rule := range rules {
+  for index, rule := range rules {
     if rule.MatchNamespace != "" && namespace != rule.MatchNamespace {
-      lg.Debugf("Rule does not match namespace: %s!=%s", rule.MatchNamespace, namespace)
+      lg.Debugf("Rule[%d] does not match namespace: %s!=%s", index, rule.MatchNamespace, namespace)
       continue
     }
 
     if rule.MatchKind != "" && kind != rule.MatchKind {
-      lg.Debugf("Rule does not match kind: %s!=%s", rule.MatchKind, kind)
+      lg.Debugf("Rule[%d] does not match kind: %s!=%s", index, rule.MatchKind, kind)
       continue
     }
 
     if rule.MatchName != "" && name != rule.MatchName {
-      lg.Debugf("Rule does not match name: %s!=%s", rule.MatchName, name)
+      lg.Debugf("Rule[%d] does not match name: %s!=%s", index, rule.MatchName, name)
       continue
     }
 
@@ -75,12 +75,12 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
       for k, v := range rule.MatchLabels {
         val, ok := labels[k]
         if !ok {
-          lg.Debugf("Rule does not match: missing label %s", k)
+          lg.Debugf("Rule[%d] does not match: missing label %s", index, k)
           labelsMatched = false
           break
         }
         if val != v {
-          lg.Debugf("Rule does not match label %s: %s!=%s ", k, v, val)
+          lg.Debugf("Rule[%d] does not match label %s: %s!=%s ", index, k, v, val)
           labelsMatched = false
           break
         }
@@ -88,13 +88,13 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
       if !labelsMatched {
         continue
       }
+    }
 
-      lg.Debugf("Rule matched")
-      matched = true
-      for k, v := range rule.Annotations {
-        lg.Debugf("Setting annotation %s=%s", k, v)
-        annotations[k] = v
-      }
+    lg.Debugf("Rule[%d] matched", index)
+    matched = true
+    for k, v := range rule.Annotations {
+      lg.Debugf("Setting annotation %s=%s", k, v)
+      annotations[k] = v
     }
   }
 
