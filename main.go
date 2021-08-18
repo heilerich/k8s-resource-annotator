@@ -71,7 +71,7 @@ func (mutator *annotationMutator) Mutate(_ context.Context, ar *kwhmodel.Admissi
     }
 
     if len(rule.MatchLabels) > 0 {
-      labelsMatched := false
+      labelsMatched := true
       for k, v := range rule.MatchLabels {
         val, ok := labels[k]
         if !ok {
